@@ -1,8 +1,8 @@
 from model.model import Model
 
 myModel = Model()
-artisti = myModel.getAllArtistsGenre("2")
+artisti = myModel.getAllArtistsGenre("1")
 print(len(artisti))
-myModel.creaGrafo("2")
+myModel.creaGrafo("1")
 nNodes, nEdges = myModel.getGraphDetails()
 print(f"N nodes: {nNodes}, n edges: {nEdges}")
