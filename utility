@@ -1,0 +1,305 @@
+from dataclasses import dataclass
+
+
+@dataclass
+class Oggetto:
+    OggettoId
+    Name
+    Country
+
+    #TIPO DI VARIABILI DA ASSOCCIARE AGLI ATTRIBUTI
+    : int
+    :str
+    :float
+    :None
+
+    #ESEMPI DI VARIABILI DA SALVARE IN MODO PARTICOLARE
+    data: datetime.date
+    dictResult: dict = field(default_factory=dict)
+
+
+    def _eq_(self, other):
+        return self.OggettoId == other.OggettoId
+    def _hash_(self):
+        return hash(self.OggettoId)
+    def _str_(self):
+        return f"{self.Name} - ({self.OggettoId})"
+
+##############################################################################
+    #DAO PWR DROPDOWN
+    @staticmethod
+    def allObjectDD():
+        conn = DBConnect.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        result = []
+        query = """ select *
+                     from genre g """
+        cursor.execute(query)
+        for row in cursor:
+            result.append(Object(**row)) #DTO SE SERVE ANCHE ID DELL'OGGETO
+            result.append(row["object"])
+        cursor.close()
+        conn.close()
+        return result
+
+##############################################################################
+    @staticmethod
+    def allNodes(input1):
+        conn = DBConnect.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        result = []
+        query="""  """
+        cursor.execute(query, (input1,))
+        for row in cursor:
+            result.append(row[" "])
+        cursor.close()
+        conn.close()
+        return result
+
+
+##############################################################################
+    @staticmethod
+    def allEdges(input1, input2):
+        conn = DBConnect.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        result = []
+        query="""  """
+        cursor.execute(query, (input1,input2))
+        for row in cursor:
+            result.append(row[" "])
+        cursor.close()
+        conn.close()
+        return result
+
+#NEL CONTROLLER:
+    def fillDDGenere(self):
+        allObject = self._model.getObjectListDD()
+        for o in allObject:
+            self._view._campoDDView.options.append(
+                ft.dropdown.Option(data=o,
+                                   text=o.Name,
+                                   key=o.id,
+                                   on_click=self.choiceObject)
+            )
+
+    def choiceObject(self, e):
+        self._ObjectSelectedValue = e.control.data
+        return self._ObjectSelectedValue
+
+
+def handleCreaGrafo(self, e):
+    self._view.txt_result.controls.clear()
+    #####################################################################
+    #PRENDO VALORE E FACCIO VERIFICHE DROPDOWN
+    if self._view._campoDDView.value is None:
+        self._view.create_alert("Selezionare da menù a tendina")
+        return
+    genere = self._ObjectSelectedValue
+    ####################################################################
+    #PRENDO E FACCIO VERIFICHE DI DATE PICKER
+    dataStart = self._view._dp1.value
+    dataEnd = self._view._dp2.value
+    if (dataStart is None):
+        self._view.create_alert("Scegliere data inizio!!")
+        return
+    if (dataEnd is None):
+        self._view.create_alert("Scegliere data fine!!")
+        return
+    if dataStart > dataEnd:
+        self._view.create_alert("La data di inizio deve precedere la data di fine!!")
+        return
+    self._view.txt_result.controls.append(
+        ft.Text("Date selezionate: ", color="green")
+    )
+    self._view.txt_result.controls.append(
+        ft.Text(f"Start: {dataStart.date()}")
+    )
+    self._view.txt_result.controls.append(
+        ft.Text(f"End: {dataEnd.date()}")
+    )
+    #######################################################################
+    #COSTRUISCO GRAFO E FACCIO VERIFICHE, LO PRENDO DAL MODEL E FFACCIO VERIFICHE
+    self._model.buildGraph(genere.GenreId, dataStart, dataEnd)
+    grafo = self._model.getGraph()
+    if len(grafo.nodes()) < 1:
+        self._view.txt_result.controls.append(
+            ft.Text(f"Grafo vuoto o creato in modo errato", color="red")
+        )
+        self._view.update_page()
+        return
+    self._view.txt_result.controls.append(
+        ft.Text("Grafo creato correttamente", color="green")
+    )
+   ###################################################################################
+    #PRENDO DETTAGLI E LI STAMPO
+    numNodes, numEdges = self._model.detailGraph()
+    self._view.txt_result.controls.append(
+        ft.Text(f"Numero nodi: {numNodes}")
+    )
+    self._view.txt_result.controls.append(
+        ft.Text(f"Numero archi: {numEdges}")
+    )
+    ##################################################################################
+    #SE C'E' TOP DA RESTITUIRE
+    listaNodoValore = list(self._model.top5())
+    self._view.txt_result.controls.append(
+        ft.Text("I 5 prodotti : ", color="green")
+    )
+    listaNodoValore.sort(key=lambda x: x[1], reverse=True)
+    top = 5
+    if len(listaNodoValore) < top:
+        top = len(listaNodoValore)
+    for i in range(0, top):
+        self._view.txt_result.controls.append(
+            ft.Text(f"{listaNodoValore[i][0]} con peso: {listaNodoValore[i][1]}")
+        )
+    self._view.update_page()
+
+
+def handleCercaCammino(self,e):
+    self._view.txt_result.controls.clear()
+    nodoInizio = self._Object1SelectedValue
+    nodoFine = self._Object2SelectedValue
+    if self._view._campoDDview1.value is None:
+        self._view.create_alert("Scegliere partenza!!")
+        return
+    if self._view._campoDDview2.value is None:
+        self._view.create_alert("Scegliere arrivo!!")
+        return
+    #########################################################################
+    #PRENDO VALORE TEXT FIELD E FACCIO CONTROLLI
+    lun = self._view.campoTextView.value
+    if lun== "":
+        self._view.create_alert("Inserire valore nel text field!!")
+        return
+    try:
+        lunInt = int(lun)
+    except ValueError:
+        self._view.create_alert("Inserire un valore intero!!")
+        return
+    if lunInt < 0:
+        self._view.create_alert("Inserire un valore positivo!!")
+        return
+    ##########################################################################
+    #CONTROLLO E RESTITUISCO CIò CHE VIENE FORNITO DALLA RICORSIONE
+    bestPath= self._model.getPath(nodoInizio, nodoFine, lunInt)
+    if len(bestPath)==0:
+        self._view.txt_result.controls.append(
+            ft.Text("nessun cammino esistente con questi input", color="red")
+        )
+        self._view.update_page()
+        return
+    self._view.txt_result.controls.append(
+        ft.Text(f"Cammino trovato: ", color="green")
+    )
+    for n in bestPath:
+        self._view.txt_result.controls.append(
+            ft.Text(n)
+        )
+    self._view.update_page()
+
+#NEL COSTRUTTORE DEL MODEL
+def _init_(self, model):
+    self._allEdges = None
+    self._allNodes = None   #oppure  self._allNodesId=None
+    self._bestPath = None
+    self._allObjectDD = DAO._allObjectDD()
+    #SE NEL DD DEVO METTERE QUALCOSA DI CUI MI SERVE L'ID METTO IN IdMap
+    self._idMapObjectDD = {}
+    for o in self._allObjectDD:
+        self._idMapObjectDD[o.id] = o
+    #IdMap PER OGGETTI CHE COMPONGONO I NODI
+    self._idMap = {}
+    for n in self._allNodes:      #SE PRENDO OGGETTO COMPLETO ALTRIMENTI SE PRENDO ID METTO SOLO n
+        self._idMap[n.Id] = n
+    self._graph = nx.DiGraph() #nx.Graph()
+    #SE SERVE FARE ANCHE MAPPA IN CUI REGISTRARE PER OGNI NODO UN PESO CHE POI COSTRUIRà
+    #IL PESO TOT DEGLI ARCHI
+
+
+    def getObjectDD(self):
+        return DAO.allObjectDD()
+
+    ###########################################################################
+    #COSTRUZIONE DEL GRAFO
+    def buildGraph(self, input1, input2, input3):
+        self._graph.clear()
+        self._allNodesId = DAO.allNodesId(input1)
+        #OPPURE
+        self._allNodes= DAO.allNodes(input1)
+        for n in self._allNodesId:
+            self._graph.add_node(self._idArtistMap[n.id])
+        self.addEdges(input2,input3)
+
+    def addEdges(self, input2, input3):
+        self._allEdges = DAO.allEdges(input2,input3)
+    #######################################################################################
+    #UNA VOLTA RACCOLTI GLI ARCHI (POSSIBILEMTE INSIEME AL PESO) ESEGUO LE CONDIZIONI DI DIREZIONE
+    #E INSERISCO IL PESO PER L'ARCO
+        for e in self._allEdges:
+            if e[0] in self._allNodesId and e[1] in self._allNodes:
+                if e[2] > e[3]:
+                    self._graph.add_edge(self._idArtistMap[e[0]], self._idArtistMap[e[1]], weight=e[2] + e[3])
+                elif e[2] < e[3]:
+                    self._graph.add_edge(self._idArtistMap[e[1]], self._idArtistMap[e[0]], weight=e[3] + e[2])
+                else:
+                    self._graph.add_edge(self._idArtistMap[e[0]], self._idArtistMap[e[1]], weight=e[2] + e[3])
+                    self._graph.add_edge(self._idArtistMap[e[1]], self._idArtistMap[e[0]], weight=e[3] + e[2])
+
+    def getGraph(self):
+        return self._graph
+
+    def detailGraph(self):
+        return len(self._graph.nodes()), len(self._graph.edges())
+
+    #SE C'è BISOGNO DI CALCOLARE UN TOP IN BADE ALLA SOMMA DEL PESO DEI ARCHI CON VICINI
+    def top5(self):
+        listaNodoValore = []
+        for n in self._graph.nodes():
+            peso = 0
+            for v in self._graph.neighbors(n):   #OPPURE SUCCESSOR E PREDECESSOR
+                peso += self._graph.get_edge_data(n, v)['weight']
+            listaNodoValore.append((n, peso))
+        listaNodoValore.sort(key=lambda p: p[1], reverse=True)
+        return listaNodoValore
+
+    ########################################################################################
+    #RICORSIONE
+
+    #IMPOSTAZIONE RICORSIONE
+    # -SE HO NODO DI INIZIO LO DO E CHIAMO LA RICORSIONE
+    # -SE NON HO NODO SOURCE INIZIO ITERAZIONE QUI E POI CHIAMO
+    def getPath(self, nodoInizio, nodoFine, lun):
+        self._bestPath=[]
+        self._lunPath=lun
+        self._bestPeso=0
+        self.ricorsione([nodoInizio], nodoFine)
+        return self._bestPath, self._bestPeso
+
+#RICORSIONE VERA E PROPRIO
+    def ricorsione(self, parziale, nodoFine):
+        #CONDIZIONE DI LIMITE DI RICERCA
+        if len(parziale)<=self._lunPath and parziale[-1]==nodoFine:
+            pesoTot= self.condizioneRicorsione(parziale)
+            #SODDISFAZIONE DEI REQUISITI (SUCCESSO) E SALVATAGGIO
+            if pesoTot>self._bestPeso:
+                self._bestPeso=pesoTot
+                self._bestPath = copy.deepcopy(parziale)
+#RETURN/ELSE PER QUANDO HO DELLE CONDIZIONI DI FINE CHE QUANDO SI VERIFICANO FERMANO LA RICERCA PER QUEL CAMMINO
+#DIRETTAMENTE FOR SE NON HO TERMINI DI FINE DELLA RICERCA MA SOLO CONDIZIONI DI INSERIRMENTO DI CERTI TIPI DI NODI
+        else:
+            print("qui")
+            for n in self._graph.successors(parziale[-1]):
+                print(f"Esploro nodo {parziale[-1]}, successori: {list(self._graph.successors(parziale[-1]))}")
+                if n not in parziale:
+                    parziale.append(n)
+                    self.ricorsione(parziale, nodoFine)
+                    parziale.pop()
+
+#CONDIZIONE DA INSERIRE NELLA RICORSIONE
+    def condizioneRicorsione(self, parziale):
+        peso=0
+        for i in range(len(parziale)-1):
+            valore=self._graph.get_edge_data(parziale[i], parziale[i+1], "weight")
+            peso += valore["weight"]
+        return peso

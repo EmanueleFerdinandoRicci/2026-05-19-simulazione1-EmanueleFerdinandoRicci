@@ -54,42 +54,8 @@ class Model:
                 self._graph.add_edge(a1, a2, weight=e.peso)
                 self._graph.add_edge(a2, a1, weight=e.peso)
 
-    def getGraphDetails(self):
-        return len(self._graph.nodes), len(self._graph.edges)
 
-    def creaGrafo(self, genreId):
-        self._graph.clear()
 
-        # 1. Aggiungo i Nodi
-        nodes = self.getAllArtistsGenre(genreId)
-        self._graph.add_nodes_from(nodes)
-
-        # 2. Recupero i dati semplificati dal DAO
-        mappa_popolarita = DAO.getMappaPopolarita(genreId)
-        coppie = DAO.getCoppieClientiComuni(genreId)
-
-        # 3. Logica in Python per stabilire verso e peso
-        for id1, id2 in coppie:
-            a1 = self._idMapArtists.get(id1)
-            a2 = self._idMapArtists.get(id2)
-
-            # Controllo di sicurezza: verifichiamo che entrambi siano nodi validi del grafo
-            if a1 in self._graph and a2 in self._graph:
-                # Recupero la popolarità dalla mappa (uso 0 come default se per caso non hanno vendite)
-                pop1 = mappa_popolarita.get(id1, 0)
-                pop2 = mappa_popolarita.get(id2, 0)
-
-                peso_totale = pop1 + pop2
-
-                # Configuro gli archi in base alle regole del testo
-                if pop1 > pop2:
-                    self._graph.add_edge(a1, a2, weight=peso_totale)
-                elif pop2 > pop1:
-                    self._graph.add_edge(a2, a1, weight=peso_totale)
-                else:
-                    # Popolarità uguale: doppio arco
-                    self._graph.add_edge(a1, a2, weight=peso_totale)
-                    self._graph.add_edge(a2, a1, weight=peso_totale)
 
     def getNodoInfluenteMax(self):
         listNodesPesata = []
