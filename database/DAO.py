@@ -269,6 +269,7 @@ class DAO():
                 WHERE c1.c1 = c2.c2 
                   AND c1.a1 < c2.a2 
                 """
+
         cursor.execute(query, (genreId, genreId,))
         for row in cursor:
             result.append((row["id1"], row["id2"]))  # Restituisco una tupla di ID
